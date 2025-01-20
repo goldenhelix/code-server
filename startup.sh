@@ -20,6 +20,7 @@ echo "Starting in folder: $STARTING_FOLDER"
 /opt/code-server/bin/code-server \
     --disable-telemetry \
     --disable-update-check \
+    --allow-shutdown \
     --disable-workspace-trust \
     --locale=$LANG \
     --welcome-text="Welcome to your Golden Helix VSCode environment" \

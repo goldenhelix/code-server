@@ -17,9 +17,14 @@
 # cd ..
 # npm run release:standalone
 
+# Add "code" as symlink
+cd release-standalone/lib/vscode/bin/remote-cli/
+ln -f -s code-linux.sh code
+cd ../../../../../
+
 export VERSION=4.96.2
 
-export SERVER_VERSION=20241223_895aa2908981
+export SERVER_VERSION=20250120_a646733f19d2
 
 # Ensure we're in the correct directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -41,9 +46,6 @@ if [ -f "./node" ]; then
     mv ./node release-standalone/lib/node
 fi
 
-# Add "code" as symlink
-cd release-standalone/lib/vscode/bin/remote-cli/
-ln -s code-linux.sh code
 
 # Run like
-# docker run -it  -p 8081:8080 -e PASSWORD=your_secure_password123 -e PORT=8080  registry.goldenhelix.com/gh/code-server:20241223_895aa2908981 /home/ghuser/Workspace/
+# docker run -it  -p 8081:8080 -e PASSWORD=your_secure_password123 -e PORT=8080 -e IDLE_TIMEOUT=2  registry.goldenhelix.com/gh/code-server:4.96.2 /home/ghuser/Workspace/
