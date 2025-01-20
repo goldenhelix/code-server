@@ -14,6 +14,17 @@ DEFAULT_PROJECT_FOLDER="$HOME/Workspace/"
 # Use the provided PROJECT_FOLDER or default to DEFAULT_PROJECT_FOLDER
 STARTING_FOLDER="${PROJECT_FOLDER:-$DEFAULT_PROJECT_FOLDER}"
 
+# If OPEN_FILE is set, start a background process to open it
+if [ ! -z "$OPEN_FILE" ]; then
+    (
+        # We need the server to start and the socket to be created (user connected) before we can open the file
+        sleep 5
+        echo "Opening file: $OPEN_FILE"
+        export VSCODE_IPC_HOOK_CLI=$(ls /tmp/vscode-ipc-*.sock | head -n 1)
+        /opt/code-server/lib/vscode/bin/remote-cli/code-server "$OPEN_FILE"
+    ) &
+fi
+
 # Your script logic here
 echo "Starting in folder: $STARTING_FOLDER"
 

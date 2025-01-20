@@ -24,8 +24,6 @@ cd ../../../../../
 
 export VERSION=4.96.2
 
-export SERVER_VERSION=20250120_a646733f19d2
-
 # Ensure we're in the correct directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
@@ -38,14 +36,12 @@ fi
 echo "PWD: $PWD"
 
 docker build --no-cache \
-  --build-arg SERVER_VERSION=${SERVER_VERSION} \
-  -t registry.goldenhelix.com/gh/code-server:${VERSION} .
+  -t registry.goldenhelix.com/public/code-server:${VERSION} .
 
 # Move the bundled node back
 if [ -f "./node" ]; then
     mv ./node release-standalone/lib/node
 fi
-
 
 # Run like
 # docker run -it  -p 8081:8080 -e PASSWORD=your_secure_password123 -e PORT=8080 -e IDLE_TIMEOUT=2  registry.goldenhelix.com/gh/code-server:4.96.2 /home/ghuser/Workspace/
