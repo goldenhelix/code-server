@@ -7,3 +7,5 @@ cd release
 npm install --omit=dev
 cd ..
 npm run release:standalone
+
+./install_system_extensions.sh

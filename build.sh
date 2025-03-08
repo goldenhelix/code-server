@@ -3,6 +3,7 @@
 # Build a Golden Helix docker image for code-server with changes to support App Streaming on VSWarehouse
 
 # Follow the directions under [CONTRIBUTING.md](docs/CONTRIBUTING.md) to build the image
+# See ./package.sh for these commands
 
 # git submodule update --init
 # quilt push -a
@@ -16,6 +17,9 @@
 # npm install --omit=dev
 # cd ..
 # npm run release:standalone
+
+# Run install_system_extensions.sh to extensions listed in extensions.txt
+# ./install_system_extensions.sh
 
 # Add "code" as symlink
 cd release-standalone/lib/vscode/bin/remote-cli/
