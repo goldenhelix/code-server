@@ -4,14 +4,14 @@ Index: code-server/lib/vscode/src/vs/server/node/webClientServer.ts
 ===================================================================
 --- code-server.orig/lib/vscode/src/vs/server/node/webClientServer.ts
 +++ code-server/lib/vscode/src/vs/server/node/webClientServer.ts
-@@ -316,7 +316,8 @@ export class WebClientServer {
+@@ -343,7 +343,8 @@ export class WebClientServer {
  			codeServerVersion: this._productService.codeServerVersion,
- 			rootEndpoint: base,
- 			updateEndpoint: !this._environmentService.args['disable-update-check'] ? base + '/update/check' : undefined,
--			logoutEndpoint: this._environmentService.args['auth'] && this._environmentService.args['auth'] !== "none" ? base + '/logout' : undefined,
-+			logoutEndpoint: this._environmentService.args['auth'] && this._environmentService.args['auth'] !== "none" && this._environmentService.args['auth'] !== "http-basic"  ? base + '/logout' : undefined,
-+			shutdownEndpoint: this._environmentService.args['allow-shutdown'] ? base + '/shutdown' : undefined,
- 			proxyEndpointTemplate: process.env.VSCODE_PROXY_URI ?? base + '/proxy/{{port}}/',
+ 			rootEndpoint: rootBase,
+ 			updateEndpoint: !this._environmentService.args['disable-update-check'] ? rootBase + '/update/check' : undefined,
+-			logoutEndpoint: this._environmentService.args['auth'] && this._environmentService.args['auth'] !== "none" ? rootBase + '/logout' : undefined,
++			logoutEndpoint: this._environmentService.args['auth'] && this._environmentService.args['auth'] !== "none" && this._environmentService.args['auth'] !== "http-basic" ? rootBase + '/logout' : undefined,
++			shutdownEndpoint: this._environmentService.args['allow-shutdown'] ? rootBase + '/shutdown' : undefined,
+ 			proxyEndpointTemplate: process.env.VSCODE_PROXY_URI ?? rootBase + '/proxy/{{port}}/',
  			serviceWorker: {
  				scope: vscodeBase + '/',
 Index: code-server/lib/vscode/src/vs/base/common/product.ts
@@ -104,7 +104,7 @@ Index: code-server/lib/vscode/src/vs/server/node/serverEnvironmentService.ts
  	'disable-file-downloads': { type: 'boolean' },
  	'disable-file-uploads': { type: 'boolean' },
  	'disable-getting-started-override': { type: 'boolean' },
-@@ -103,6 +104,7 @@ export interface ServerParsedArgs {
+@@ -104,6 +105,7 @@ export interface ServerParsedArgs {
  	/* ----- code-server ----- */
  	'disable-update-check'?: boolean;
  	'auth'?: string;

@@ -1,8 +1,9 @@
 npm run build
-# VERSION=4.96.2 npm run build:vscode
+#export NODE_OPTIONS="--max-old-space-size=16384" 
+VERSION=4.98.0-rc.1 npm run build:vscode
 npm run release
 
-VERSION=4.96.2 npm run package
+VERSION=4.98.0-rc.1 npm run package
 cd release
 npm install --omit=dev
 cd ..
