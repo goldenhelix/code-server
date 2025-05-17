@@ -1,4 +1,3 @@
-hashicorp.terraform
 ms-python.debugpy
 ms-python.python
 ms-python.vscode-pylance
@@ -11,4 +10,4 @@ ms-vscode-remote.remote-containers
 stkb.rewrap
 streetsidesoftware.code-spell-checker
 redhat.vscode-yaml
-saoudrizwan.claude-dev
+
