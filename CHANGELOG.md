@@ -22,6 +22,82 @@ Code v99.99.999
 
 ## Unreleased
 
+## [4.100.0](https://github.com/coder/code-server/releases/tag/v4.100.0) - 2025-05-12
+
+Code v1.100.0
+
+### Added
+
+- Trusted domains for links can now be set at run-time by configuring
+  `linkProtectionTrustedDomains` in the `lib/vscode/product.json` file or via
+  the `--link-protection-trusted-domains` flag.
+
+### Changed
+
+- Update to Code 1.100.0.
+- Disable extension signature verification, which previously was skipped by
+  default (the package used for verification is not available to OSS builds of
+  VS Code) but now reportedly throws hard errors making it impossible to install
+  extensions.
+
+### Fixed
+
+- Flags with repeatable options now work via the config file.
+
+## [4.99.4](https://github.com/coder/code-server/releases/tag/v4.99.4) - 2025-05-02
+
+Code v1.99.3
+
+### Security
+
+- Validate that ports in the path proxy are numbers, to prevent proxying to
+  arbitrary domains.
+
+## [4.99.3](https://github.com/coder/code-server/releases/tag/v4.99.3) - 2025-04-17
+
+Code v1.99.3
+
+### Added
+
+- Added `--skip-auth-preflight` flag to let preflight requests through the
+  proxy.
+
+### Changed
+
+- Update to Code 1.99.3.
+
+## [4.99.2](https://github.com/coder/code-server/releases/tag/v4.99.2) - 2025-04-10
+
+Code v1.99.2
+
+### Changed
+
+- Update to Code 1.99.2.
+
+## [4.99.1](https://github.com/coder/code-server/releases/tag/v4.99.1) - 2025-04-08
+
+Code v1.99.1
+
+### Changed
+
+- Update to Code 1.99.1.
+
+## [4.99.0](https://github.com/coder/code-server/releases/tag/v4.99.0) - 2025-04-07
+
+Code v1.99.0
+
+### Changed
+
+- Update to Code 1.99.0.
+
+## [4.98.0](https://github.com/coder/code-server/releases/tag/v4.98.0) - 2025-03-07
+
+Code v1.98.0
+
+### Changed
+
+- Update to Code 1.98.0.
+
 ## [4.97.2](https://github.com/coder/code-server/releases/tag/v4.96.4) - 2025-02-18
 
 Code v1.97.2

@@ -21,3 +21,5 @@ keepalive.diff
 clipboard.diff
 display-language.diff
 shutdown.diff
+trusted-domains.diff
+signature-verification.diff

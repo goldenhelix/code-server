@@ -31,7 +31,7 @@ export enum LogLevel {
 export class OptionalString extends Optional<string> {}
 
 /**
- * Code flags provided by the user.
+ * (VS) Code flags provided by the user.
  */
 export interface UserProvidedCodeArgs {
   "disable-telemetry"?: boolean
@@ -55,7 +55,9 @@ export interface UserProvidedCodeArgs {
   "disable-getting-started-override"?: boolean
   "disable-proxy"?: boolean
   "session-socket"?: string
-  "abs-proxy-base-path"?: string
+  "link-protection-trusted-domains"?: string[]
+  // locale is used by both VS Code and code-server.
+  locale?: string
 }
 
 /**
@@ -76,7 +78,6 @@ export interface UserProvidedArgs extends UserProvidedCodeArgs {
   enable?: string[]
   help?: boolean
   host?: string
-  locale?: string
   port?: number
   json?: boolean
   log?: LogLevel
@@ -88,12 +89,14 @@ export interface UserProvidedArgs extends UserProvidedCodeArgs {
   version?: boolean
   "idle-timeout"?: number
   "proxy-domain"?: string[]
+  "skip-auth-preflight"?: boolean
   "reuse-window"?: boolean
   "new-window"?: boolean
   "ignore-last-opened"?: boolean
   verbose?: boolean
   "app-name"?: string
   "welcome-text"?: string
+  "abs-proxy-base-path"?: string
   /* Positional arguments. */
   _?: string[]
 }
@@ -205,6 +208,10 @@ export const options: Options<Required<UserProvidedArgs>> = {
   enable: { type: "string[]" },
   help: { type: "boolean", short: "h", description: "Show this output." },
   json: { type: "boolean" },
+  "link-protection-trusted-domains": {
+    type: "string[]",
+    description: "Links matching a trusted domain can be opened without link protection.",
+  },
   locale: {
     // The preferred way to set the locale is via the UI.
     type: "string",
@@ -265,6 +272,10 @@ export const options: Options<Required<UserProvidedArgs>> = {
   },
   "idle-timeout": { type: "number", description: "Timeout in minutes to wait before shutting down when idle." },
   "proxy-domain": { type: "string[]", description: "Domain used for proxying ports." },
+  "skip-auth-preflight": {
+    type: "boolean",
+    description: "Allows preflight requests through proxy without authentication.",
+  },
   "ignore-last-opened": {
     type: "boolean",
     short: "e",
@@ -730,12 +741,16 @@ export function parseConfigFile(configFile: string, configPath: string): ConfigA
 
   // We convert the config file into a set of flags.
   // This is a temporary measure until we add a proper CLI library.
-  const configFileArgv = Object.entries(config).map(([optName, opt]) => {
-    if (opt === true) {
-      return `--${optName}`
-    }
-    return `--${optName}=${opt}`
-  })
+  const configFileArgv = Object.entries(config)
+    .map(([optName, opt]) => {
+      if (opt === true) {
+        return `--${optName}`
+      } else if (Array.isArray(opt)) {
+        return opt.map((o) => `--${optName}=${o}`)
+      }
+      return `--${optName}=${opt}`
+    })
+    .flat()
   const args = parse(configFileArgv, {
     configFile: configPath,
   })
