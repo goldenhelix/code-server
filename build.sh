@@ -18,7 +18,10 @@
 # git -C lib/vscode checkout -- .
 
 # Merge the changes from the latest tagged version to your local main branch
-# git merge v4.100.2
+# git merge v4.103.1
+
+# You may need to reset the vscode lib to the latest version (git the hash from git diff lib/vscode)
+# git -C lib/vscode reset --hard 360a4e4fd251bfce169a4ddf857c7d25d1ad40da
 
 # Apply the patches
 # quilt push -a
@@ -58,7 +61,7 @@ cd release-standalone/lib/vscode/bin/remote-cli/
 ln -f -s code-linux.sh code
 cd ../../../../../
 
-export VERSION=4.100.2
+export VERSION=4.103.1
 
 # Ensure we're in the correct directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -80,4 +83,4 @@ if [ -f "./node" ]; then
 fi
 
 # Run like
-# docker run -it  -p 8081:8080 -e PASSWORD=your_secure_password123 -e PORT=8080 -e IDLE_TIMEOUT=2  registry.goldenhelix.com/public/code-server:4.100.2 /home/ghuser/Workspace/
+# docker run -it  -p 8081:8080 -e PASSWORD=your_secure_password123 -e PORT=8080 -e IDLE_TIMEOUT=2  -e USERNAME=rudy -v /home/rudy/Workspace:/home/ghuser/Workspace  registry.goldenhelix.com/public/code-server:4.103.1 /home/ghuser/Workspace/

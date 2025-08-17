@@ -6,6 +6,22 @@ mkdir -p $HOME/Workspace/Documents/$USERNAME/code-server
 export XDG_DATA_HOME=$HOME/Workspace/Documents/$USERNAME
 set -e
 
+# Set up persistent ~/.gitconfig
+GITCONFIG_SOURCE="$HOME/.gitconfig"
+GITCONFIG_TARGET="$XDG_DATA_HOME/.gitconfig"
+
+# If the target doesn't exist, create an empty file
+if [ ! -f "$GITCONFIG_TARGET" ]; then
+    echo "Creating empty gitconfig at $GITCONFIG_TARGET"
+    touch "$GITCONFIG_TARGET"
+fi
+
+# Create symlink if it doesn't exist or is broken
+if [ ! -L "$GITCONFIG_SOURCE" ] || [ ! -e "$GITCONFIG_SOURCE" ]; then
+    echo "Creating symlink from ~/.gitconfig to $GITCONFIG_TARGET"
+    ln -sf "$GITCONFIG_TARGET" "$GITCONFIG_SOURCE"
+fi
+
 echo 'export PS1="$USERNAME:\w\$ "' >> $HOME/.bashrc
 
 # Set the default project folder
