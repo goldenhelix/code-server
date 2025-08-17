@@ -1,15 +1,16 @@
 import { field, logger } from "@coder/logger"
 import http from "http"
+import * as os from "os"
 import * as path from "path"
 import { Disposable } from "../common/emitter"
 import { plural } from "../common/util"
 import { createApp, ensureAddress } from "./app"
 import { AuthType, DefaultedArgs, Feature, toCodeArgs, UserProvidedArgs } from "./cli"
 import { commit, version, vsRootPath } from "./constants"
+import { loadCustomStrings } from "./i18n"
 import { register } from "./routes"
 import { VSCodeModule } from "./routes/vscode"
 import { isDirectory, open } from "./util"
-import * as os from "os"
 
 /**
  * Return true if the user passed an extension-related VS Code flag.
@@ -122,6 +123,12 @@ export const runCodeServer = async (
 ): Promise<{ dispose: Disposable["dispose"]; server: http.Server }> => {
   logger.info(`code-server ${version} ${commit}`)
 
+  // Load custom strings if provided
+  if (args.i18n) {
+    await loadCustomStrings(args.i18n)
+    logger.info("Loaded custom strings")
+  }
+
   logger.info(`Using user-data-dir ${args["user-data-dir"]}`)
   logger.debug(`Using extensions-dir ${args["extensions-dir"]}`)
 
@@ -144,6 +151,8 @@ export const runCodeServer = async (
       logger.info("    - Using password from $PASSWORD")
     } else if (args.usingEnvHashedPassword) {
       logger.info("    - Using password from $HASHED_PASSWORD")
+    } else if (args["hashed-password"]) {
+      logger.info(`    - Using hashed-password from ${args.config}`)
     } else {
       logger.info(`    - Using password from ${args.config}`)
     }

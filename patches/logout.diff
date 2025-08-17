@@ -20,7 +20,7 @@ Index: code-server/lib/vscode/src/vs/server/node/serverEnvironmentService.ts
 ===================================================================
 --- code-server.orig/lib/vscode/src/vs/server/node/serverEnvironmentService.ts
 +++ code-server/lib/vscode/src/vs/server/node/serverEnvironmentService.ts
-@@ -15,6 +15,7 @@ import { URI } from '../../base/common/u
+@@ -17,6 +17,7 @@ import { join } from '../../base/common/
  export const serverOptions: OptionDescriptions<Required<ServerParsedArgs>> = {
  	/* ----- code-server ----- */
  	'disable-update-check': { type: 'boolean' },
@@ -28,7 +28,7 @@ Index: code-server/lib/vscode/src/vs/server/node/serverEnvironmentService.ts
  
  	/* ----- server setup ----- */
  
-@@ -99,6 +100,7 @@ export const serverOptions: OptionDescri
+@@ -102,6 +103,7 @@ export const serverOptions: OptionDescri
  export interface ServerParsedArgs {
  	/* ----- code-server ----- */
  	'disable-update-check'?: boolean;
@@ -40,7 +40,7 @@ Index: code-server/lib/vscode/src/vs/server/node/webClientServer.ts
 ===================================================================
 --- code-server.orig/lib/vscode/src/vs/server/node/webClientServer.ts
 +++ code-server/lib/vscode/src/vs/server/node/webClientServer.ts
-@@ -342,6 +342,7 @@ export class WebClientServer {
+@@ -341,6 +341,7 @@ export class WebClientServer {
  			codeServerVersion: this._productService.codeServerVersion,
  			rootEndpoint: rootBase,
  			updateEndpoint: !this._environmentService.args['disable-update-check'] ? rootBase + '/update/check' : undefined,
