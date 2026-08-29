@@ -4,7 +4,7 @@ Index: code-server/lib/vscode/src/vs/server/node/webClientServer.ts
 ===================================================================
 --- code-server.orig/lib/vscode/src/vs/server/node/webClientServer.ts
 +++ code-server/lib/vscode/src/vs/server/node/webClientServer.ts
-@@ -343,7 +343,8 @@ export class WebClientServer {
+@@ -358,7 +358,8 @@ export class WebClientServer {
  			codeServerVersion: this._productService.codeServerVersion,
  			rootEndpoint: rootBase,
  			updateEndpoint: !this._environmentService.args['disable-update-check'] ? rootBase + '/update/check' : undefined,
@@ -18,7 +18,7 @@ Index: code-server/lib/vscode/src/vs/base/common/product.ts
 ===================================================================
 --- code-server.orig/lib/vscode/src/vs/base/common/product.ts
 +++ code-server/lib/vscode/src/vs/base/common/product.ts
-@@ -59,6 +59,7 @@ export interface IProductConfiguration {
+@@ -101,6 +101,7 @@ export interface IProductConfiguration {
  	readonly rootEndpoint?: string
  	readonly updateEndpoint?: string
  	readonly logoutEndpoint?: string
@@ -72,31 +72,11 @@ Index: code-server/lib/vscode/src/vs/workbench/browser/client.ts
  	}
  
  	private async registerServiceWorker(serviceWorker: { path: string; scope: string }) {
-Index: code-server/src/node/routes/index.ts
-===================================================================
---- code-server.orig/src/node/routes/index.ts
-+++ code-server/src/node/routes/index.ts
-@@ -170,6 +170,15 @@ export const register = async (app: App,
-     app.router.all("/logout", (req, res) => redirect(req, res, "/", {}))
-   }
- 
-+  if (args["allow-shutdown"] ) {
-+    app.router.use("/shutdown", async (req, res) => {
-+      res.send("Shutting down...")
-+      process.exit(0)
-+    })
-+  } else {
-+    app.router.use("/shutdown", (req, res) => redirect(req, res, "/", {}))
-+  }
-+
-   app.router.use("/update", update.router)
- 
-   // Note that the root route is replaced in Coder Enterprise by the plugin API.
 Index: code-server/lib/vscode/src/vs/server/node/serverEnvironmentService.ts
 ===================================================================
 --- code-server.orig/lib/vscode/src/vs/server/node/serverEnvironmentService.ts
 +++ code-server/lib/vscode/src/vs/server/node/serverEnvironmentService.ts
-@@ -16,6 +16,7 @@ export const serverOptions: OptionDescri
+@@ -19,6 +19,7 @@ export const serverOptions: OptionDescri
  	/* ----- code-server ----- */
  	'disable-update-check': { type: 'boolean' },
  	'auth': { type: 'string' },
@@ -104,7 +84,7 @@ Index: code-server/lib/vscode/src/vs/server/node/serverEnvironmentService.ts
  	'disable-file-downloads': { type: 'boolean' },
  	'disable-file-uploads': { type: 'boolean' },
  	'disable-getting-started-override': { type: 'boolean' },
-@@ -104,6 +105,7 @@ export interface ServerParsedArgs {
+@@ -118,6 +119,7 @@ export interface ServerParsedArgs {
  	/* ----- code-server ----- */
  	'disable-update-check'?: boolean;
  	'auth'?: string;

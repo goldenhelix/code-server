@@ -26,3 +26,5 @@ signature-verification.diff
 copilot.diff
 app-name.diff
 csp-hashes.diff
+default-open-terminal.diff
+welcome-message.diff

@@ -30,6 +30,11 @@ DEFAULT_PROJECT_FOLDER="$HOME/Workspace/"
 # Use the provided PROJECT_FOLDER or default to DEFAULT_PROJECT_FOLDER
 STARTING_FOLDER="${PROJECT_FOLDER:-$DEFAULT_PROJECT_FOLDER}"
 
+# Whether to reveal the integrated terminal panel automatically the first time
+# a workspace is opened. Defaults to on; set OPEN_TERMINAL_ON_START=false to
+# disable for launch contexts that don't want it.
+OPEN_TERMINAL_ON_START="${OPEN_TERMINAL_ON_START:-true}"
+
 # If OPEN_FILE is set, start a background process to open it
 if [ ! -z "$OPEN_FILE" ]; then
     (
@@ -52,4 +57,5 @@ echo "Starting in folder: $STARTING_FOLDER"
     --locale=$LANG \
     --welcome-text="Welcome to your Golden Helix VSCode environment" \
     --ignore-last-opened \
+    --vscode-option open-terminal-on-start=$OPEN_TERMINAL_ON_START \
     $STARTING_FOLDER

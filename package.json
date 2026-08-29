@@ -149,5 +149,8 @@
       "^.+\\.(css|less)$": "<rootDir>/test/utils/cssStub.ts"
     },
     "globalSetup": "<rootDir>/test/utils/globalUnitSetup.ts"
+  },
+  "allowScripts": {
+    "argon2@0.44.0": true
   }
 }

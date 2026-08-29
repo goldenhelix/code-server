@@ -10,4 +10,6 @@ ms-vscode-remote.remote-containers
 stkb.rewrap
 streetsidesoftware.code-spell-checker
 redhat.vscode-yaml
+sst-dev.opencode
+continue.continue
 

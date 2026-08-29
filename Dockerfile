@@ -4,7 +4,7 @@
 FROM debian:bookworm-20241202-slim AS nodebuilder
 RUN apt-get update && apt-get install -y xz-utils openssl jq curl python3 build-essential
 #COPY node-binary.tar.xz /opt/node-binary.tar.xz
-RUN curl -L https://nodejs.org/dist/v20.18.1/node-v20.18.1-linux-x64.tar.xz -o /opt/node-binary.tar.xz
+RUN curl -L https://nodejs.org/dist/v24.18.1/node-v24.18.1-linux-x64.tar.xz -o /opt/node-binary.tar.xz
 RUN mkdir -p /opt/node
 RUN tar -xvf  /opt/node-binary.tar.xz --strip-components=1 -C /opt/node/
 ENV PATH="/opt/node/bin:${PATH}"

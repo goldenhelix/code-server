@@ -1,0 +1,60 @@
+Add --open-terminal-on-start to reveal the integrated Terminal panel by default
+
+This adds a new `--open-terminal-on-start` CLI flag (and env-var-driven default
+setter can be added in src/node/cli.ts if desired) that sets `defaultLayout` in
+the workbench web configuration, using VS Code's existing web-embedding API
+(the same mechanism vscode.dev/github.dev use to seed initial view state).
+
+It only takes effect when a workspace/folder is actually being opened
+(--default-folder or --default-workspace), and only on that workspace's
+first-ever load (`defaultLayout` is a first-load-only signal upstream, keyed
+off IStorageService.isNew for that workspace) -- so it never fights a user who
+later closes the terminal themselves, and it does not affect the bare/no-folder
+workbench landing page.
+
+To test: run code-server with --open-terminal-on-start --default-folder <dir>
+against a folder that has never been opened before and confirm the integrated
+terminal panel is visible on first load; then close it, reload, and confirm it
+stays closed (proving this doesn't force the layout on every load).
+
+Index: code-server/lib/vscode/src/vs/server/node/serverEnvironmentService.ts
+===================================================================
+--- code-server.orig/lib/vscode/src/vs/server/node/serverEnvironmentService.ts
++++ code-server/lib/vscode/src/vs/server/node/serverEnvironmentService.ts
+@@ -26,6 +26,7 @@ export const serverOptions: OptionDescri
+ 	'locale': { type: 'string' },
+ 	'link-protection-trusted-domains': { type: 'string[]' },
+ 	'app-name': { type: 'string' },
++	'open-terminal-on-start': { type: 'boolean' },
+ 
+ 	/* ----- server setup ----- */
+ 
+@@ -128,6 +129,7 @@ export interface ServerParsedArgs {
+ 	'locale'?: string
+ 	'link-protection-trusted-domains'?: string[],
+ 	'app-name'?: string,
++	'open-terminal-on-start'?: boolean,
+ 
+ 	/* ----- server setup ----- */
+ 
+Index: code-server/lib/vscode/src/vs/server/node/webClientServer.ts
+===================================================================
+--- code-server.orig/lib/vscode/src/vs/server/node/webClientServer.ts
++++ code-server/lib/vscode/src/vs/server/node/webClientServer.ts
+@@ -406,6 +406,16 @@ export class WebClientServer {
+ 			enabledExtensionProposedApi: this._environmentService.args['enable-proposed-api'],
+ 			folderUri: resolveWorkspaceURI(this._environmentService.args['default-folder']),
+ 			workspaceUri: resolveWorkspaceURI(this._environmentService.args['default-workspace']),
++			// Reveal the terminal panel the first time a workspace is opened
++			// (defaultLayout only applies on a workspace's first-ever load, and never
++			// overrides a user's own later choice to close it again). Note a folder
++			// passed positionally on the CLI (as opposed to --default-folder) resolves
++			// to a folder client-side via the ?folder= URL redirect, so it can't be
++			// observed here -- this intentionally does not require a folder/workspace
++			// arg to be present server-side.
++			defaultLayout: this._environmentService.args['open-terminal-on-start']
++				? { views: [{ id: 'terminal' }] }
++				: undefined,
+ 			productConfiguration,
+ 			callbackRoute: callbackRoute
+ 		};

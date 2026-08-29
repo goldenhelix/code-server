@@ -18,10 +18,10 @@
 # git -C lib/vscode checkout -- .
 
 # Merge the changes from the latest tagged version to your local main branch
-# git merge v4.103.1
+# git merge v4.135.0
 
 # You may need to reset the vscode lib to the latest version (git the hash from git diff lib/vscode)
-# git -C lib/vscode reset --hard 360a4e4fd251bfce169a4ddf857c7d25d1ad40da
+# git -C lib/vscode reset --hard 08d4889f9ec4a1685d257b9b95de036c8e1ce1e5
 
 # Apply the patches
 # quilt push -a
@@ -41,14 +41,14 @@
 # quilt push -a
 # npm install
 # npm run build
-# VERSION=4.96.2 npm run build:vscode
-# npm run release
+# VERSION=4.135.0 npm run build:vscode
 
-# VERSION=4.96.2 npm run package
-# cd release
-# npm install --omit=dev
-# cd ..
-# npm run release:standalone
+# Upstream removed the old release/package/release:standalone 3-step process
+# (coder/code-server#7721) -- a single `npm run release` with KEEP_MODULES=1
+# now produces a ready-to-run directory directly (see package.sh).
+# export RELEASE_PATH=release-standalone
+# KEEP_MODULES=1 npm run release
+# VERSION=4.135.0 npm run package
 
 # Run install_system_extensions.sh to extensions listed in extensions.txt
 # ./install_system_extensions.sh
@@ -61,7 +61,7 @@ cd release-standalone/lib/vscode/bin/remote-cli/
 ln -f -s code-linux.sh code
 cd ../../../../../
 
-export VERSION=4.103.1
+export VERSION=4.135.0
 
 # Ensure we're in the correct directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -83,4 +83,4 @@ if [ -f "./node" ]; then
 fi
 
 # Run like
-# docker run -it  -p 8081:8080 -e PASSWORD=your_secure_password123 -e PORT=8080 -e IDLE_TIMEOUT=2  -e USERNAME=rudy -v /home/rudy/Workspace:/home/ghuser/Workspace  registry.goldenhelix.com/public/code-server:4.103.1 /home/ghuser/Workspace/
+# docker run -it  -p 8081:8080 -e PASSWORD=your_secure_password123 -e PORT=8080 -e IDLE_TIMEOUT=2  -e USERNAME=rudy -v /home/rudy/Workspace:/home/ghuser/Workspace  registry.goldenhelix.com/public/code-server:4.135.0 /home/ghuser/Workspace/

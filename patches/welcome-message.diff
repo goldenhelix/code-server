@@ -1,0 +1,140 @@
+Replace the upstream Coder promo card on the Getting Started page with --welcome-text
+
+Upstream's getting-started.diff adds a "Next Up" card promoting Coder's own
+commercial deployment platform (linking to cdr.co/code-server-to-coder). This
+replaces that card's content with the existing --welcome-text value (already
+used on the login page) instead, threaded through as a new welcomeText product
+field. The card only renders when welcome-text is actually set, so this is a
+no-op if left unconfigured. Same on/off gate as before
+(--disable-getting-started-override), reused rather than adding a new flag.
+
+To test: set --welcome-text "Some message" and confirm it appears in a styled
+card on the Welcome page instead of Coder's own promo, and disappears entirely
+with --disable-getting-started-override.
+
+Index: code-server/lib/vscode/src/vs/base/common/product.ts
+===================================================================
+--- code-server.orig/lib/vscode/src/vs/base/common/product.ts
++++ code-server/lib/vscode/src/vs/base/common/product.ts
+@@ -102,6 +102,7 @@ export interface IProductConfiguration {
+ 	readonly updateEndpoint?: string
+ 	readonly logoutEndpoint?: string
+ 	readonly shutdownEndpoint?: string
++	readonly welcomeText?: string
+ 	readonly proxyEndpointTemplate?: string
+ 	readonly serviceWorker?: {
+ 		readonly path: string;
+Index: code-server/lib/vscode/src/vs/server/node/serverEnvironmentService.ts
+===================================================================
+--- code-server.orig/lib/vscode/src/vs/server/node/serverEnvironmentService.ts
++++ code-server/lib/vscode/src/vs/server/node/serverEnvironmentService.ts
+@@ -26,6 +26,7 @@ export const serverOptions: OptionDescri
+ 	'locale': { type: 'string' },
+ 	'link-protection-trusted-domains': { type: 'string[]' },
+ 	'app-name': { type: 'string' },
++	'welcome-text': { type: 'string' },
+ 	'open-terminal-on-start': { type: 'boolean' },
+ 
+ 	/* ----- server setup ----- */
+@@ -129,6 +130,7 @@ export interface ServerParsedArgs {
+ 	'locale'?: string
+ 	'link-protection-trusted-domains'?: string[],
+ 	'app-name'?: string,
++	'welcome-text'?: string,
+ 	'open-terminal-on-start'?: boolean,
+ 
+ 	/* ----- server setup ----- */
+Index: code-server/lib/vscode/src/vs/server/node/webClientServer.ts
+===================================================================
+--- code-server.orig/lib/vscode/src/vs/server/node/webClientServer.ts
++++ code-server/lib/vscode/src/vs/server/node/webClientServer.ts
+@@ -371,6 +371,7 @@ export class WebClientServer {
+ 			updateEndpoint: !this._environmentService.args['disable-update-check'] ? rootBase + '/update/check' : undefined,
+ 			logoutEndpoint: this._environmentService.args['auth'] && this._environmentService.args['auth'] !== "none" && this._environmentService.args['auth'] !== "http-basic" ? rootBase + '/logout' : undefined,
+ 			shutdownEndpoint: this._environmentService.args['allow-shutdown'] ? rootBase + '/shutdown' : undefined,
++			welcomeText: this._environmentService.args['welcome-text'],
+ 			proxyEndpointTemplate: process.env.VSCODE_PROXY_URI ?? rootBase + '/proxy/{{port}}/',
+ 			serviceWorker: {
+ 				scope: vscodeBase + '/',
+Index: code-server/lib/vscode/src/vs/workbench/contrib/welcomeGettingStarted/browser/gettingStarted.ts
+===================================================================
+--- code-server.orig/lib/vscode/src/vs/workbench/contrib/welcomeGettingStarted/browser/gettingStarted.ts
++++ code-server/lib/vscode/src/vs/workbench/contrib/welcomeGettingStarted/browser/gettingStarted.ts
+@@ -929,67 +929,19 @@ export class GettingStartedPage extends
+ 		);
+ 
+ 		let gettingStartedCoder: HTMLElement = $('.header', {});
+-		if (this.contextService.contextMatchesRules(IsEnabledCoderGettingStarted)) {
++		if (this.contextService.contextMatchesRules(IsEnabledCoderGettingStarted) && this.productService.welcomeText) {
+ 			gettingStartedCoder = $('.gettingStartedCategory', {},
+-				$('h2', {
+-					style: 'margin-bottom: 12px',
+-				}, 'Next Up'),
+-				$('a', {
+-					href: 'https://cdr.co/code-server-to-coder',
+-					target: '_blank',
++				$('div', {
++					style: [
++						'padding: 16px',
++						'border-radius: 4px',
++						'background: linear-gradient(94.04deg, #7934DA 0%, #4D52E0 101.2%)',
++						'color: white',
++					].join(';'),
+ 				},
+-					$('button', {
+-						style: [
+-							'padding: 10px 16px	',
+-							'border-radius: 4px',
+-							'background: linear-gradient(94.04deg, #7934DA 0%, #4D52E0 101.2%)',
+-							'color: white',
+-							'overflow: hidden',
+-							'margin-right: 14px',
+-						].join(';'),
+-					},
+-					$('h3', {
+-						style: [
+-							'margin: 0px 0px 6px',
+-							'font-weight: 500',
+-						].join(';'),
+-					}, 'Deploy code-server for your team'),
+ 					$('p', {
+-						style: [
+-							'margin: 0',
+-							'font-size: 13px',
+-							'color: #dcdee2',
+-						].join(';'),
+-					}, 'Provision software development environments on your infrastructure with Coder.'),
+-					$('p', {
+-						style: [
+-							'margin-top: 8px',
+-							'font-size: 13px',
+-							'color: #dcdee2',
+-						].join(';'),
+-					}, 'Coder is a self-service portal which provisions via Terraform—Linux, macOS, Windows, x86, ARM, and, of course, Kubernetes based infrastructure.'),
+-					$('p', {
+-						style: [
+-							'margin: 0',
+-							'margin-top: 8px',
+-							'font-size: 13px',
+-							'display: flex',
+-							'align-items: center',
+-						].join(';'),
+-					}, 'Get started ', $('span', {
+-						class: ThemeIcon.asClassName(Codicon.arrowRight),
+-						style: [
+-							'color: white',
+-							'margin-left: 8px',
+-						].join(';'),
+-					})),
+-					$('img', {
+-						src: './_static/src/browser/media/templates.png',
+-						style: [
+-							'margin-bottom: -65px',
+-						].join(';'),
+-					}),
+-					),
++						style: 'margin: 0; font-size: 13px;',
++					}, this.productService.welcomeText),
+ 				),
+ 			);
+ 		}
