@@ -1,5 +1,6 @@
 import { logger } from "@coder/logger"
 import { promises as fs } from "fs"
+import { Emitter } from "../common/emitter"
 import { wrapper } from "./wrapper"
 
 /**
@@ -10,6 +11,9 @@ export class Heart {
   private idleCheckTimer?: NodeJS.Timeout
   private heartbeatInterval = 60000
   public lastHeartbeat = 0
+  private readonly _onChange = new Emitter<"alive" | "expired" | "unknown">()
+  readonly onChange = this._onChange.event
+  private state: "alive" | "expired" | "unknown" = "expired"
 
   public constructor(
     private readonly heartbeatPath: string,
@@ -24,6 +28,13 @@ export class Heart {
     }
   }
 
+  private setState(state: typeof this.state) {
+    if (this.state !== state) {
+      this.state = state
+      this._onChange.emit(this.state)
+    }
+  }
+
   public alive(): boolean {
     const now = Date.now()
     return now - this.lastHeartbeat < this.heartbeatInterval
@@ -35,6 +46,7 @@ export class Heart {
    */
   public async beat(): Promise<void> {
     if (this.alive()) {
+      this.setState("alive")
       return
     }
 
@@ -43,7 +55,22 @@ export class Heart {
     if (typeof this.heartbeatTimer !== "undefined") {
       clearTimeout(this.heartbeatTimer)
     }
-    this.heartbeatTimer = setTimeout(() => heartbeatTimer(this.isActive, this.beat), this.heartbeatInterval)
+
+    this.heartbeatTimer = setTimeout(async () => {
+      try {
+        if (await this.isActive()) {
+          this.beat()
+        } else {
+          this.setState("expired")
+        }
+      } catch (error: unknown) {
+        logger.warn((error as Error).message)
+        this.setState("unknown")
+      }
+    }, this.heartbeatInterval)
+
+    this.setState("alive")
+
     try {
       return await fs.writeFile(this.heartbeatPath, "")
     } catch (error: any) {
@@ -72,22 +99,5 @@ export class Heart {
     if (typeof this.idleCheckTimer !== "undefined") {
       clearInterval(this.idleCheckTimer)
     }
-  }
-}
-
-/**
- * Helper function for the heartbeatTimer.
- *
- * If heartbeat is active, call beat. Otherwise do nothing.
- *
- * Extracted to make it easier to test.
- */
-export async function heartbeatTimer(isActive: Heart["isActive"], beat: Heart["beat"]) {
-  try {
-    if (await isActive()) {
-      beat()
-    }
-  } catch (error: unknown) {
-    logger.warn((error as Error).message)
   }
 }

@@ -10,7 +10,7 @@ Index: code-server/lib/vscode/src/vs/base/common/network.ts
 ===================================================================
 --- code-server.orig/lib/vscode/src/vs/base/common/network.ts
 +++ code-server/lib/vscode/src/vs/base/common/network.ts
-@@ -226,7 +226,9 @@ class RemoteAuthoritiesImpl {
+@@ -251,7 +251,9 @@ class RemoteAuthoritiesImpl {
  		return URI.from({
  			scheme: platform.isWeb ? this._preferredWebSchema : Schemas.vscodeRemoteResource,
  			authority: `${host}:${port}`,
@@ -99,19 +99,19 @@ Index: code-server/lib/vscode/src/vs/platform/remote/browser/browserSocketFactor
 ===================================================================
 --- code-server.orig/lib/vscode/src/vs/platform/remote/browser/browserSocketFactory.ts
 +++ code-server/lib/vscode/src/vs/platform/remote/browser/browserSocketFactory.ts
-@@ -281,6 +281,7 @@ export class BrowserSocketFactory implem
+@@ -282,6 +282,7 @@ export class BrowserSocketFactory implem
  	connect({ host, port }: WebSocketRemoteConnection, path: string, query: string, debugLabel: string): Promise<ISocket> {
  		return new Promise<ISocket>((resolve, reject) => {
  			const webSocketSchema = (/^https:/.test(mainWindow.location.href) ? 'wss' : 'ws');
 +			path = (mainWindow.location.pathname + "/" + path).replace(/\/\/+/g, "/")
  			const socket = this._webSocketFactory.create(`${webSocketSchema}://${(/:/.test(host) && !/\[/.test(host)) ? `[${host}]` : host}:${port}${path}?${query}&skipWebSocketFrames=false`, debugLabel);
- 			const errorListener = socket.onError(reject);
- 			socket.onOpen(() => {
+ 			const disposables = new DisposableStore();
+ 			disposables.add(socket.onError(reject));
 Index: code-server/lib/vscode/src/vs/server/node/webClientServer.ts
 ===================================================================
 --- code-server.orig/lib/vscode/src/vs/server/node/webClientServer.ts
 +++ code-server/lib/vscode/src/vs/server/node/webClientServer.ts
-@@ -245,7 +245,9 @@ export class WebClientServer {
+@@ -263,7 +263,9 @@ export class WebClientServer {
  		};
  
  		// Prefix routes with basePath for clients
@@ -120,9 +120,9 @@ Index: code-server/lib/vscode/src/vs/server/node/webClientServer.ts
 +		const vscodeBase = relativePath(getOriginalUrl(req))
 +		const basePath = vscodeBase || getFirstHeader('x-forwarded-prefix') || this._basePath;
  
- 		const queryConnectionToken = parsedUrl.query[connectionTokenQueryName];
- 		if (typeof queryConnectionToken === 'string') {
-@@ -284,10 +286,14 @@ export class WebClientServer {
+ 		const queryConnectionTokens = parsedUrl.searchParams.getAll(connectionTokenQueryName);
+ 		if (queryConnectionTokens.length === 1) {
+@@ -300,10 +302,14 @@ export class WebClientServer {
  		};
  
  		const useTestResolver = (!this._environmentService.isBuilt && this._environmentService.args['use-test-resolver']);
@@ -138,15 +138,15 @@ Index: code-server/lib/vscode/src/vs/server/node/webClientServer.ts
  		);
  		if (!remoteAuthority) {
  			return serveError(req, res, 400, `Bad request.`);
-@@ -334,6 +340,7 @@ export class WebClientServer {
+@@ -350,6 +356,7 @@ export class WebClientServer {
  
  		const productConfiguration: Partial<Mutable<IProductConfiguration>> = {
  			codeServerVersion: this._productService.codeServerVersion,
 +			rootEndpoint: rootBase,
  			embedderIdentifier: 'server-distro',
+ 			voiceWsUrl: this._productService.voiceWsUrl,
  			extensionsGallery: this._webExtensionResourceUrlTemplate && this._productService.extensionsGallery ? {
- 				...this._productService.extensionsGallery,
-@@ -387,7 +394,9 @@ export class WebClientServer {
+@@ -399,7 +406,9 @@ export class WebClientServer {
  			WORKBENCH_AUTH_SESSION: authSessionInfo ? asJSON(authSessionInfo) : '',
  			WORKBENCH_WEB_BASE_URL: staticRoute,
  			WORKBENCH_NLS_URL,
@@ -157,7 +157,7 @@ Index: code-server/lib/vscode/src/vs/server/node/webClientServer.ts
  		};
  
  		// DEV ---------------------------------------------------------------------------------------
-@@ -424,7 +433,7 @@ export class WebClientServer {
+@@ -436,7 +445,7 @@ export class WebClientServer {
  			'default-src \'self\';',
  			'img-src \'self\' https: data: blob:;',
  			'media-src \'self\';',
@@ -166,7 +166,7 @@ Index: code-server/lib/vscode/src/vs/server/node/webClientServer.ts
  			'child-src \'self\';',
  			`frame-src 'self' https://*.vscode-cdn.net data:;`,
  			'worker-src \'self\' data: blob:;',
-@@ -497,3 +506,70 @@ export class WebClientServer {
+@@ -509,3 +518,70 @@ export class WebClientServer {
  		return void res.end(data);
  	}
  }
@@ -241,7 +241,7 @@ Index: code-server/lib/vscode/src/vs/base/common/product.ts
 ===================================================================
 --- code-server.orig/lib/vscode/src/vs/base/common/product.ts
 +++ code-server/lib/vscode/src/vs/base/common/product.ts
-@@ -57,6 +57,7 @@ export type ExtensionVirtualWorkspaceSup
+@@ -98,6 +98,7 @@ export interface IDictationRuntimeProduc
  
  export interface IProductConfiguration {
  	readonly codeServerVersion?: string
@@ -253,7 +253,7 @@ Index: code-server/lib/vscode/src/vs/code/browser/workbench/workbench.ts
 ===================================================================
 --- code-server.orig/lib/vscode/src/vs/code/browser/workbench/workbench.ts
 +++ code-server/lib/vscode/src/vs/code/browser/workbench/workbench.ts
-@@ -338,7 +338,8 @@ class LocalStorageURLCallbackProvider ex
+@@ -339,7 +339,8 @@ class LocalStorageURLCallbackProvider ex
  			this.startListening();
  		}
  
@@ -263,7 +263,7 @@ Index: code-server/lib/vscode/src/vs/code/browser/workbench/workbench.ts
  	}
  
  	private startListening(): void {
-@@ -583,17 +584,6 @@ class WorkspaceProvider implements IWork
+@@ -590,17 +591,6 @@ class WorkspaceProvider implements IWork
  	}
  }
  
@@ -281,7 +281,7 @@ Index: code-server/lib/vscode/src/vs/code/browser/workbench/workbench.ts
  (function () {
  
  	// Find config by checking for DOM
-@@ -602,8 +592,8 @@ function readCookie(name: string): strin
+@@ -610,8 +600,8 @@ function readCookie(name: string): strin
  	if (!configElement || !configElementAttribute) {
  		throw new Error('Missing web configuration element');
  	}

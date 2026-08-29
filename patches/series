@@ -23,3 +23,6 @@ display-language.diff
 shutdown.diff
 trusted-domains.diff
 signature-verification.diff
+copilot.diff
+app-name.diff
+csp-hashes.diff

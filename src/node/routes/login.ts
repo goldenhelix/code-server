@@ -2,7 +2,6 @@ import { Router, Request } from "express"
 import { promises as fs } from "fs"
 import { RateLimiter as Limiter } from "limiter"
 import * as path from "path"
-import { CookieKeys } from "../../common/http"
 import { rootPath } from "../constants"
 import { authenticated, getCookieOptions, redirect, replaceTemplates } from "../http"
 import i18n from "../i18n"
@@ -30,11 +29,10 @@ const getRoot = async (req: Request, error?: Error): Promise<string> => {
   const content = await fs.readFile(path.join(rootPath, "src/browser/pages/login.html"), "utf8")
   const locale = req.args["locale"] || "en"
   i18n.changeLanguage(locale)
-  const appName = req.args["app-name"] || "code-server"
-  const welcomeText = req.args["welcome-text"] || (i18n.t("WELCOME", { app: appName }) as string)
+  const welcomeText = req.args["welcome-text"] || (i18n.t("WELCOME", { app: req.args["app-name"] }) as string)
 
   // Determine password message using i18n
-  let passwordMsg = i18n.t("LOGIN_PASSWORD", { configFile: req.args.config })
+  let passwordMsg = i18n.t("LOGIN_PASSWORD")
   if (req.args.usingEnvPassword) {
     passwordMsg = i18n.t("LOGIN_USING_ENV_PASSWORD")
   } else if (req.args.usingEnvHashedPassword) {
@@ -44,7 +42,7 @@ const getRoot = async (req: Request, error?: Error): Promise<string> => {
   return replaceTemplates(
     req,
     content
-      .replace(/{{I18N_LOGIN_TITLE}}/g, i18n.t("LOGIN_TITLE", { app: appName }))
+      .replace(/{{I18N_LOGIN_TITLE}}/g, i18n.t("LOGIN_TITLE", { app: req.args["app-name"] }))
       .replace(/{{WELCOME_TEXT}}/g, welcomeText)
       .replace(/{{PASSWORD_MSG}}/g, passwordMsg)
       .replace(/{{I18N_LOGIN_BELOW}}/g, i18n.t("LOGIN_BELOW"))
@@ -95,7 +93,7 @@ router.post<{}, string, { password?: string; base?: string } | undefined, { to?:
     if (isPasswordValid) {
       // The hash does not add any actual security but we do it for
       // obfuscation purposes (and as a side effect it handles escaping).
-      res.cookie(CookieKeys.Session, hashedPassword, getCookieOptions(req))
+      res.cookie(req.cookieSessionName, hashedPassword, getCookieOptions(req))
 
       const to = (typeof req.query.to === "string" && req.query.to) || "/"
       return redirect(req, res, to, { to: undefined })

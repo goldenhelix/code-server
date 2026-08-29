@@ -5,7 +5,7 @@ import { promises as fs } from "fs"
 import * as path from "path"
 import * as tls from "tls"
 import { Disposable } from "../../common/emitter"
-import { HttpCode, HttpError } from "../../common/http"
+import { getCookieSessionName, HttpCode, HttpError } from "../../common/http"
 import { plural } from "../../common/util"
 import { App } from "../app"
 import { AuthType, DefaultedArgs } from "../cli"
@@ -29,7 +29,10 @@ import * as vscode from "./vscode"
 /**
  * Register all routes and middleware.
  */
-export const register = async (app: App, args: DefaultedArgs): Promise<Disposable["dispose"]> => {
+export const register = async (
+  app: App,
+  args: DefaultedArgs,
+): Promise<{ disposeRoutes: Disposable["dispose"]; heart: Heart }> => {
   const heart = new Heart(path.join(paths.data, "heartbeat"), args["idle-timeout"], async () => {
     return new Promise((resolve, reject) => {
       // getConnections appears to not call the callback when there are no more
@@ -59,6 +62,8 @@ export const register = async (app: App, args: DefaultedArgs): Promise<Disposabl
   const settings = new SettingsProvider<CoderSettings>(path.join(args["user-data-dir"], "coder.json"))
   const updater = new UpdateProvider("https://api.github.com/repos/coder/code-server/releases/latest", settings)
 
+  const cookieSessionName = getCookieSessionName(args["cookie-suffix"])
+
   const common: express.RequestHandler = (req, _, next) => {
     // /healthz|/healthz/ needs to be excluded otherwise health checks will make
     // it look like code-server is always in use.
@@ -73,6 +78,7 @@ export const register = async (app: App, args: DefaultedArgs): Promise<Disposabl
     req.heart = heart
     req.settings = settings
     req.updater = updater
+    req.cookieSessionName = cookieSessionName
 
     next()
   }
@@ -184,8 +190,11 @@ export const register = async (app: App, args: DefaultedArgs): Promise<Disposabl
   app.router.use(errorHandler)
   app.wsRouter.use(wsErrorHandler)
 
-  return () => {
-    heart.dispose()
-    vscode.dispose()
+  return {
+    disposeRoutes: () => {
+      heart.dispose()
+      vscode.dispose()
+    },
+    heart,
   }
 }

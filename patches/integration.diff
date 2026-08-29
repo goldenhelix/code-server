@@ -48,7 +48,7 @@ Index: code-server/lib/vscode/src/vs/server/node/server.main.ts
 -[REMOTE_DATA_FOLDER, args['extensions-dir'], USER_DATA_PATH, APP_SETTINGS_HOME, MACHINE_SETTINGS_HOME, GLOBAL_STORAGE_HOME, LOCAL_HISTORY_HOME].forEach(f => {
 -	try {
 -		if (!fs.existsSync(f)) {
--			fs.mkdirSync(f, { mode: 0o700 });
+-			fs.mkdirSync(f, { mode: 0o700, recursive: true });
 -		}
 -	} catch (err) { console.error(err); }
 -});
@@ -68,7 +68,7 @@ Index: code-server/lib/vscode/src/vs/server/node/server.main.ts
 +	[REMOTE_DATA_FOLDER, args['extensions-dir'], USER_DATA_PATH, APP_SETTINGS_HOME, MACHINE_SETTINGS_HOME, GLOBAL_STORAGE_HOME, LOCAL_HISTORY_HOME].forEach(f => {
 +		try {
 +			if (!fs.existsSync(f)) {
-+				fs.mkdirSync(f, { mode: 0o700 });
++				fs.mkdirSync(f, { mode: 0o700, recursive: true });
 +			}
 +		} catch (err) { console.error(err); }
 +	});
@@ -109,24 +109,6 @@ Index: code-server/lib/vscode/src/vs/base/common/processes.ts
  	];
  	const envKeys = Object.keys(env);
  	envKeys
-Index: code-server/lib/vscode/src/vs/workbench/browser/parts/dialogs/dialogHandler.ts
-===================================================================
---- code-server.orig/lib/vscode/src/vs/workbench/browser/parts/dialogs/dialogHandler.ts
-+++ code-server/lib/vscode/src/vs/workbench/browser/parts/dialogs/dialogHandler.ts
-@@ -78,8 +78,11 @@ export class BrowserDialogHandler extend
- 
- 	async about(): Promise<void> {
- 		const detailString = (useAgo: boolean): string => {
--			return localize('aboutDetail',
--				"Version: {0}\nCommit: {1}\nDate: {2}\nBrowser: {3}",
-+			return localize('aboutCodeServerDetail',
-+				"code-server: {0}",
-+				this.productService.codeServerVersion ? `v${this.productService.codeServerVersion}` : 'Unknown'
-+			) + '\n' + localize('aboutDetail',
-+				"Code: {0}\nCommit: {1}\nDate: {2}\nBrowser: {3}",
- 				this.productService.version || 'Unknown',
- 				this.productService.commit || 'Unknown',
- 				this.productService.date ? `${this.productService.date}${useAgo ? ' (' + fromNow(new Date(this.productService.date), true) + ')' : ''}` : 'Unknown',
 Index: code-server/lib/vscode/src/vs/workbench/browser/client.ts
 ===================================================================
 --- /dev/null
@@ -190,7 +172,7 @@ Index: code-server/lib/vscode/src/vs/workbench/browser/web.main.ts
  import { IProgressService } from '../../platform/progress/common/progress.js';
  import { DelayedLogChannel } from '../services/output/common/delayedLogChannel.js';
  import { dirname, joinPath } from '../../base/common/resources.js';
-@@ -130,6 +131,9 @@ export class BrowserMain extends Disposa
+@@ -140,6 +141,9 @@ export class BrowserMain extends Disposa
  		// Startup
  		const instantiationService = workbench.startup();
  
@@ -204,8 +186,8 @@ Index: code-server/lib/vscode/src/vs/base/common/product.ts
 ===================================================================
 --- code-server.orig/lib/vscode/src/vs/base/common/product.ts
 +++ code-server/lib/vscode/src/vs/base/common/product.ts
-@@ -56,6 +56,8 @@ export type ExtensionVirtualWorkspaceSup
- };
+@@ -97,6 +97,8 @@ export interface IDictationRuntimeProduc
+ }
  
  export interface IProductConfiguration {
 +	readonly codeServerVersion?: string
@@ -269,21 +251,21 @@ Index: code-server/lib/vscode/src/vs/server/node/webClientServer.ts
 ===================================================================
 --- code-server.orig/lib/vscode/src/vs/server/node/webClientServer.ts
 +++ code-server/lib/vscode/src/vs/server/node/webClientServer.ts
-@@ -333,6 +333,7 @@ export class WebClientServer {
+@@ -349,6 +349,7 @@ export class WebClientServer {
  		} : undefined;
  
  		const productConfiguration: Partial<Mutable<IProductConfiguration>> = {
 +			codeServerVersion: this._productService.codeServerVersion,
  			embedderIdentifier: 'server-distro',
+ 			voiceWsUrl: this._productService.voiceWsUrl,
  			extensionsGallery: this._webExtensionResourceUrlTemplate && this._productService.extensionsGallery ? {
- 				...this._productService.extensionsGallery,
 Index: code-server/lib/vscode/src/server-main.ts
 ===================================================================
 --- code-server.orig/lib/vscode/src/server-main.ts
 +++ code-server/lib/vscode/src/server-main.ts
-@@ -25,6 +25,9 @@ const __dirname = path.dirname(fileURLTo
+@@ -23,6 +23,9 @@ import { IServerAPI } from './vs/server/
  perf.mark('code/server/start');
- (globalThis as any).vscodeServerStartTime = performance.now();
+ (globalThis as { vscodeServerStartTime?: number }).vscodeServerStartTime = performance.now();
  
 +// This is not indented to make the diff less noisy.  We need to move this out
 +// of the top-level so it will not run immediately and we can control the start.
@@ -291,15 +273,33 @@ Index: code-server/lib/vscode/src/server-main.ts
  // Do a quick parse to determine if a server or the cli needs to be started
  const parsedArgs = minimist(process.argv.slice(2), {
  	boolean: ['start-server', 'list-extensions', 'print-ip-address', 'help', 'version', 'accept-server-license-terms', 'update-extensions'],
+@@ -50,7 +53,7 @@ if (shouldSpawnCli) {
+ 		mod.spawnCli();
+ 	});
+ } else {
+-	installServerProcessExitDiagnostics();
++	installServerProcessExitDiagnostics(parsedArgs);
+ 
+ 	let _remoteExtensionHostAgentServer: IServerAPI | null = null;
+ 	let _remoteExtensionHostAgentServerPromise: Promise<IServerAPI> | null = null;
 @@ -153,6 +156,7 @@ if (shouldSpawnCli) {
  		}
  	});
  }
 +}
  
- function sanitizeStringArg(val: any): string | undefined {
+ function sanitizeStringArg(val: unknown): string | undefined {
  	if (Array.isArray(val)) { // if an argument is passed multiple times, minimist creates an array
-@@ -286,3 +290,22 @@ function prompt(question: string): Promi
+@@ -173,7 +177,7 @@ function sanitizeStringArg(val: unknown)
+  * provided) so they survive process teardown (an async stdio write from an
+  * `exit` handler does not).
+  */
+-function installServerProcessExitDiagnostics(): void {
++function installServerProcessExitDiagnostics(parsedArgs: minimist.ParsedArgs): void {
+ 	if (!process.env['VSCODE_SERVER_EXIT_DIAGNOSTICS']) {
+ 		return;
+ 	}
+@@ -406,3 +410,22 @@ function prompt(question: string): Promi
  		});
  	});
  }
@@ -310,7 +310,7 @@ Index: code-server/lib/vscode/src/server-main.ts
 +		osLocale: 'en',
 +		commit: product.commit,
 +		userDataPath: '',
-+		nlsMetadataPath: __dirname,
++		nlsMetadataPath: import.meta.dirname,
 +	});
 +	return loadCode(nlsConfiguration);
 +}
@@ -322,3 +322,21 @@ Index: code-server/lib/vscode/src/server-main.ts
 +if (!process.env.CODE_SERVER_PARENT_PID) {
 +	start();
 +}
+Index: code-server/lib/vscode/src/vs/workbench/browser/parts/dialogs/dialog.ts
+===================================================================
+--- code-server.orig/lib/vscode/src/vs/workbench/browser/parts/dialogs/dialog.ts
++++ code-server/lib/vscode/src/vs/workbench/browser/parts/dialogs/dialog.ts
+@@ -54,8 +54,11 @@ export function createWorkbenchDialogOpt
+ 
+ export function createBrowserAboutDialogDetails(productService: IProductService): { title: string; details: string; detailsToCopy: string } {
+ 	const detailString = (useAgo: boolean): string => {
+-		return localize('aboutDetail',
+-			"Version: {0}\nCommit: {1}\nDate: {2}\nBrowser: {3}",
++		return localize('aboutCodeServerDetail',
++			"code-server: {0}",
++			productService.codeServerVersion ? `v${productService.codeServerVersion}` : 'Unknown'
++		) + '\n' + localize('aboutDetail',
++			"Code: {0}\nCommit: {1}\nDate: {2}\nBrowser: {3}",
+ 			productService.version || 'Unknown',
+ 			productService.commit || 'Unknown',
+ 			productService.date ? `${productService.date}${useAgo ? ' (' + fromNow(new Date(productService.date), true) + ')' : ''}` : 'Unknown',

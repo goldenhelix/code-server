@@ -1,9 +1,8 @@
 import { logger } from "@coder/logger"
 import { readFile, writeFile, stat, utimes } from "fs/promises"
-import { Heart, heartbeatTimer } from "../../../src/node/heart"
+import { setImmediate } from "timers"
+import { Heart } from "../../../src/node/heart"
 import { clean, mockLogger, tmpdir } from "../../utils/helpers"
-
-const mockIsActive = (resolveTo: boolean) => jest.fn().mockResolvedValue(resolveTo)
 
 describe("Heart", () => {
   const testName = "heartTests"
@@ -15,12 +14,15 @@ describe("Heart", () => {
     await clean(testName)
     testDir = await tmpdir(testName)
   })
-  beforeEach(() => {
-    heart = new Heart(`${testDir}/shutdown.txt`, mockIsActive(true))
-  })
+
   afterAll(() => {
     jest.restoreAllMocks()
   })
+
+  beforeEach(() => {
+    heart = new Heart(`${testDir}/shutdown.txt`, jest.fn().mockResolvedValue(true))
+  })
+
   afterEach(() => {
     jest.resetAllMocks()
     jest.useRealTimers()
@@ -28,6 +30,7 @@ describe("Heart", () => {
       heart.dispose()
     }
   })
+
   it("should write to a file when given a valid file path", async () => {
     // Set up heartbeat file with contents
     const text = "test"
@@ -42,7 +45,7 @@ describe("Heart", () => {
 
     expect(fileContents).toBe(text)
 
-    heart = new Heart(pathToFile, mockIsActive(true))
+    heart = new Heart(pathToFile, jest.fn().mockResolvedValue(true))
     await heart.beat()
     // Check that the heart wrote to the heartbeatFilePath and overwrote our text
     const fileContentsAfterBeat = await readFile(pathToFile, { encoding: "utf8" })
@@ -51,62 +54,135 @@ describe("Heart", () => {
     const fileStatusAfterEdit = await stat(pathToFile)
     expect(fileStatusAfterEdit.mtimeMs).toBeGreaterThan(0)
   })
+
   it("should log a warning when given an invalid file path", async () => {
-    heart = new Heart(`fakeDir/fake.txt`, mockIsActive(false))
+    heart = new Heart(`fakeDir/fake.txt`, jest.fn().mockResolvedValue(false))
     await heart.beat()
     expect(logger.warn).toHaveBeenCalled()
   })
+
   it("should be active after calling beat", async () => {
     await heart.beat()
 
     const isAlive = heart.alive()
     expect(isAlive).toBe(true)
   })
+
   it("should not be active after dispose is called", () => {
     heart.dispose()
 
     const isAlive = heart.alive()
     expect(isAlive).toBe(false)
   })
+
   it("should beat twice without warnings", async () => {
-    // Use fake timers so we can speed up setTimeout
-    jest.useFakeTimers()
-    heart = new Heart(`${testDir}/hello.txt`, mockIsActive(true))
+    heart = new Heart(`${testDir}/hello.txt`, jest.fn().mockResolvedValue(true))
     await heart.beat()
-    // we need to speed up clocks, timeouts
-    // call heartbeat again (and it won't be alive I think)
-    // then assert no warnings were called
     jest.runAllTimers()
     expect(logger.warn).not.toHaveBeenCalled()
   })
 })
 
 describe("heartbeatTimer", () => {
-  beforeAll(() => {
+  const testName = "heartbeatTimer"
+  let testDir = ""
+
+  beforeAll(async () => {
+    await clean(testName)
+    testDir = await tmpdir(testName)
     mockLogger()
   })
+
   afterAll(() => {
     jest.restoreAllMocks()
   })
+
+  beforeEach(() => {
+    jest.useFakeTimers()
+  })
+
   afterEach(() => {
     jest.resetAllMocks()
+    jest.clearAllTimers()
+    jest.useRealTimers()
   })
-  it("should call beat when isActive resolves to true", async () => {
-    const isActive = true
-    const mockIsActive = jest.fn().mockResolvedValue(isActive)
-    const mockBeatFn = jest.fn()
-    await heartbeatTimer(mockIsActive, mockBeatFn)
+
+  it("should call isActive when timeout expires", async () => {
+    const mockIsActive = jest.fn().mockResolvedValue(true)
+    const heart = new Heart(`${testDir}/shutdown.txt`, mockIsActive)
+    await heart.beat()
+    jest.advanceTimersByTime(60 * 1000)
     expect(mockIsActive).toHaveBeenCalled()
-    expect(mockBeatFn).toHaveBeenCalled()
   })
+
   it("should log a warning when isActive rejects", async () => {
-    const errorMsg = "oh no"
-    const error = new Error(errorMsg)
+    const error = new Error("oh no")
     const mockIsActive = jest.fn().mockRejectedValue(error)
-    const mockBeatFn = jest.fn()
-    await heartbeatTimer(mockIsActive, mockBeatFn)
+    const heart = new Heart(`${testDir}/shutdown.txt`, mockIsActive)
+    await heart.beat()
+    jest.advanceTimersByTime(60 * 1000)
     expect(mockIsActive).toHaveBeenCalled()
-    expect(mockBeatFn).not.toHaveBeenCalled()
-    expect(logger.warn).toHaveBeenCalledWith(errorMsg)
+
+    // The timer callback waits on mockIsActive, so we need to yield to let the
+    // callback finish.
+    await new Promise((resolve) => setImmediate(resolve))
+
+    expect(logger.warn).toHaveBeenCalledWith(error.message)
+  })
+})
+
+describe("stateChange", () => {
+  const testName = "stateChange"
+  let testDir = ""
+  let heart: Heart
+
+  beforeAll(async () => {
+    await clean(testName)
+    testDir = await tmpdir(testName)
+    mockLogger()
+  })
+
+  afterAll(() => {
+    jest.restoreAllMocks()
+  })
+
+  beforeEach(() => {
+    jest.useFakeTimers()
+  })
+
+  afterEach(() => {
+    jest.resetAllMocks()
+    jest.useRealTimers()
+    if (heart) {
+      heart.dispose()
+    }
+  })
+
+  it("should change to alive after a beat", async () => {
+    const mockIsActive = jest.fn().mockResolvedValue(true)
+    heart = new Heart(`${testDir}/shutdown.txt`, mockIsActive)
+    const mockOnChange = jest.fn()
+    heart.onChange(mockOnChange)
+
+    await heart.beat()
+
+    expect(mockOnChange.mock.calls[0][0]).toBe("alive")
+  })
+
+  it("should change to expired when not active", async () => {
+    const mockIsActive = jest.fn().mockResolvedValue(false)
+    heart = new Heart(`${testDir}/shutdown.txt`, mockIsActive)
+    const mockOnChange = jest.fn()
+    heart.onChange(mockOnChange)
+
+    await heart.beat()
+    jest.advanceTimersByTime(60 * 1000)
+    expect(mockIsActive).toHaveBeenCalled()
+
+    // The timer callback waits on the isActive promise, so we need to yield to
+    // let the callback finish.
+    await new Promise((resolve) => setImmediate(resolve))
+
+    expect(mockOnChange.mock.calls[1][0]).toBe("expired")
   })
 })

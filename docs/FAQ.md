@@ -17,11 +17,13 @@
 - [Where is VS Code configuration stored?](#where-is-vs-code-configuration-stored)
 - [How can I reuse my VS Code configuration?](#how-can-i-reuse-my-vs-code-configuration)
 - [How does code-server decide what workspace or folder to open?](#how-does-code-server-decide-what-workspace-or-folder-to-open)
+- [Can I open a file at a specific line from a URL?](#can-i-open-a-file-at-a-specific-line-from-a-url)
 - [How do I access my Documents/Downloads/Desktop folders in code-server on macOS?](#how-do-i-access-my-documentsdownloadsdesktop-folders-in-code-server-on-macos)
 - [How do I direct server-side requests through a proxy?](#how-do-i-direct-server-side-requests-through-a-proxy)
 - [How do I debug issues with code-server?](#how-do-i-debug-issues-with-code-server)
 - [What is the healthz endpoint?](#what-is-the-healthz-endpoint)
 - [What is the heartbeat file?](#what-is-the-heartbeat-file)
+- [How do I change the reconnection grace time?](#how-do-i-change-the-reconnection-grace-time)
 - [How do I change the password?](#how-do-i-change-the-password)
 - [Can I store my password hashed?](#can-i-store-my-password-hashed)
 - [Is multi-tenancy possible?](#is-multi-tenancy-possible)
@@ -31,6 +33,7 @@
 - [What's the difference between code-server and Theia?](#whats-the-difference-between-code-server-and-theia)
 - [What's the difference between code-server and OpenVSCode-Server?](#whats-the-difference-between-code-server-and-openvscode-server)
 - [What's the difference between code-server and GitHub Codespaces?](#whats-the-difference-between-code-server-and-github-codespaces)
+- [What's the difference between code-server and VS Code web?](#whats-the-difference-between-code-server-and-vs-code-web)
 - [Does code-server have any security login validation?](#does-code-server-have-any-security-login-validation)
 - [Are there community projects involving code-server?](#are-there-community-projects-involving-code-server)
 - [How do I change the port?](#how-do-i-change-the-port)
@@ -38,6 +41,7 @@
 - [How do I disable the proxy?](#how-do-i-disable-the-proxy)
 - [How do I disable file download?](#how-do-i-disable-file-download)
 - [Why do web views not work?](#why-do-web-views-not-work)
+- [Can I run code-server with systemd socket activation?](#can-i-run-code-server-with-systemd-socket-activation)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 <!-- prettier-ignore-end -->
@@ -228,6 +232,39 @@ code-server tries the following in this order:
 3. The workspace or directory passed via the command line
 4. The last opened workspace or directory
 
+## Can I open a file at a specific line from a URL?
+
+Yes. In addition to `workspace` and `folder`, code-server supports VS Code's
+`payload` query parameter, which can open a specific file — optionally at a
+line and column — once the workbench loads.
+
+`payload` is a URL-encoded JSON array of `[key, value]` string pairs. The
+`openFile` key takes a `vscode-remote://<host>/<absolute path>` URI, where
+`<host>` is the host you use to reach code-server. Add
+`["gotoLineMode","true"]` to have a trailing `:line[:column]` suffix on the
+path interpreted as a cursor position:
+
+```text
+https://code.example.com/?folder=/home/coder/project&payload=[["gotoLineMode","true"],["openFile","vscode-remote://code.example.com/home/coder/project/src/app.py:10:5"]]
+```
+
+(with the `payload` value URL-encoded). Notes:
+
+- Paths must be absolute; there is no form relative to `folder`.
+- This is upstream VS Code web behavior (the same mechanism vscode.dev uses),
+  so it works without any code-server-specific configuration.
+
+For example, to generate links from a shell:
+
+```sh
+#!/bin/sh
+# usage: code-link <absolute-file> [line[:column]]
+HOST=code.example.com
+payload="[[\"gotoLineMode\",\"true\"],[\"openFile\",\"vscode-remote://$HOST$1${2:+:$2}\"]]"
+printf 'https://%s/?folder=%s&payload=%s\n' "$HOST" "$(dirname "$1")" \
+  "$(printf '%s' "$payload" | jq -sRr @uri)"
+```
+
 ## How do I access my Documents/Downloads/Desktop folders in code-server on macOS?
 
 Newer versions of macOS require permission through a non-UNIX mechanism for
@@ -322,12 +359,18 @@ As long as there is an active browser connection, code-server touches
 `~/.local/share/code-server/heartbeat` once a minute.
 
 If you want to shutdown code-server if there hasn't been an active connection
-after a predetermined amount of time, you can do so by checking continuously for
-the last modified time on the heartbeat file. If it is older than X minutes (or
-whatever amount of time you'd like), you can kill code-server.
+after a predetermined amount of time, you can use the --idle-timeout-seconds flag
+or set an `CODE_SERVER_IDLE_TIMEOUT_SECONDS` environment variable.
 
-Eventually, [#1636](https://github.com/coder/code-server/issues/1636) will make
-this process better.
+## How do I change the reconnection grace time?
+
+Pass `--reconnection-grace-time <seconds>` to `code-server`, set
+`CODE_SERVER_RECONNECTION_GRACE_TIME=<seconds>`, or add
+`reconnection-grace-time: <seconds>` to
+`~/.config/code-server/config.yaml`.
+
+The default is `10800` (3 hours). If a client stays disconnected longer than
+this, it must reload the window.
 
 ## How do I change the password?
 
@@ -443,6 +486,8 @@ Specific changes include:
 - The ability to use your own marketplace and collect your own telemetry
 - Built-in proxy for accessing ports on the remote machine integrated into
   VS Code's ports panel
+- Settings are stored on disk like desktop VS Code, instead of in browser
+  storage (note that state is still stored in browser storage).
 - Wrapper process that spawns VS Code on-demand and has a separate CLI
 - Notification when updates are available
 - [Some other things](https://github.com/coder/code-server/tree/main/patches)
@@ -450,6 +495,12 @@ Specific changes include:
 Some of these changes appear very unlikely to ever be adopted by Microsoft.
 Some may make their way upstream, further closing the gap, but at the moment it
 looks like there will always be some subtle differences.
+
+## What's the difference between code-server and VS Code web?
+
+VS Code web (which can be ran using `code serve-web`) has the same differences
+as the Codespaces section above. VS Code web can be a better choice if you need
+access to the official Microsoft marketplace.
 
 ## Does code-server have any security login validation?
 
@@ -510,3 +561,41 @@ To fix this, you must either:
   create and trust a certificate manually).
 - Disable security if your browser allows it. For example, in Chromium see
   `chrome://flags/#unsafely-treat-insecure-origin-as-secure`
+
+## Can I run code-server with systemd socket activation?
+
+Yes. Pass the inherited socket to code-server with `--socket-fd`. systemd
+passes the first listening socket as file descriptor `3`.
+
+Create a socket unit, `~/.config/systemd/user/code-server.socket`:
+
+```ini
+[Socket]
+ListenStream=8080
+
+[Install]
+WantedBy=sockets.target
+```
+
+And a matching service unit, `~/.config/systemd/user/code-server.service`:
+
+```ini
+[Service]
+ExecStart=/usr/bin/code-server --socket-fd 3
+```
+
+Then enable and start the socket:
+
+```bash
+systemctl --user enable --now code-server.socket
+```
+
+code-server will start on the first connection and listen on the socket
+systemd created. `--socket-fd` takes precedence over `--socket` and
+`--bind-addr`/`--port`/`--host`, and `--socket-mode` is ignored because
+systemd owns the socket's permissions.
+
+Socket activation only changes how code-server binds; your usual
+authentication still applies (it keeps prompting for the configured password
+unless you set `--auth none`), so keep authentication enabled when exposing the
+server.
