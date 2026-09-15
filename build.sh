@@ -56,31 +56,23 @@
 # Note that lib/vscode/package.json may need the following change (remove --max-old-space-size=8192 )
 #    "gulp": "node ./node_modules/gulp/bin/gulp.js",
 
-# Add "code" as symlink
-cd release-standalone/lib/vscode/bin/remote-cli/
-ln -f -s code-linux.sh code
-cd ../../../../../
+set -euo pipefail
 
-export VERSION=4.135.0
+export VERSION=4.135.0-2
 
 # Ensure we're in the correct directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
 
-# Temporarily move the bundled node out of the way
-if [ -f "release-standalone/lib/node" ]; then
-    mv release-standalone/lib/node ./node
-fi
+# Add "code" as symlink
+ln -sfn code-linux.sh release-standalone/lib/vscode/bin/remote-cli/code
+
+# The bundled node binary and the Copilot CLI are excluded from the build context by .dockerignore
 
 echo "PWD: $PWD"
 
 docker build --no-cache \
   -t registry.goldenhelix.com/public/code-server:${VERSION} .
 
-# Move the bundled node back
-if [ -f "./node" ]; then
-    mv ./node release-standalone/lib/node
-fi
-
-# Run like
-# docker run -it  -p 8081:8080 -e PASSWORD=your_secure_password123 -e PORT=8080 -e IDLE_TIMEOUT=2  -e USERNAME=rudy -v /home/rudy/Workspace:/home/ghuser/Workspace  registry.goldenhelix.com/public/code-server:4.135.0 /home/ghuser/Workspace/
+# Run like (startup.sh reads PROJECT_FOLDER, positional arguments are ignored)
+# docker run -it -p 8081:8080 -e PASSWORD=your_secure_password123 -e IDLE_TIMEOUT=2 -e PROJECT_FOLDER=/home/ghuser/Workspace -v /home/rudy/Workspace:/home/ghuser/Workspace registry.goldenhelix.com/public/code-server:4.135.0

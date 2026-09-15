@@ -1,6 +1,8 @@
 **
-!release-packages
-!ci
 !release-standalone
+# The image symlinks lib/node to the system Node (see Dockerfile), so the bundled binary is never used
+release-standalone/lib/node
+# GitHub Copilot CLI (185 MB): only the VS Code agent host loads it, and startup.sh disables the agent host
+release-standalone/lib/vscode/node_modules/@github/copilot-linux-x64
 !startup.sh
 !install_locales.sh

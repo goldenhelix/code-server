@@ -22,7 +22,7 @@ if [ ! -L "$GITCONFIG_SOURCE" ] || [ ! -e "$GITCONFIG_SOURCE" ]; then
     ln -sf "$GITCONFIG_TARGET" "$GITCONFIG_SOURCE"
 fi
 
-echo 'export PS1="$USERNAME:\w\$ "' >> $HOME/.bashrc
+grep -q 'export PS1=' $HOME/.bashrc 2>/dev/null || echo 'export PS1="$USERNAME:\w\$ "' >> $HOME/.bashrc
 
 # Set the default project folder
 DEFAULT_PROJECT_FOLDER="$HOME/Workspace/"
@@ -49,6 +49,12 @@ fi
 # Your script logic here
 echo "Starting in folder: $STARTING_FOLDER"
 
+# agent-host-bridge-host with no bridge port/path makes the VS Code server register
+# its agent-host channel as unavailable instead of spawning the agent host and the
+# GitHub Copilot CLI it launches (~400 MB RSS together). The VSCode app runs in a
+# 1 GiB cgroup, and with those two processes present the OOM killer takes the
+# extension host.
+
 /opt/code-server/bin/code-server \
     --disable-telemetry \
     --disable-update-check \
@@ -58,4 +64,5 @@ echo "Starting in folder: $STARTING_FOLDER"
     --welcome-text="Welcome to your Golden Helix VSCode environment" \
     --ignore-last-opened \
     --vscode-option open-terminal-on-start=$OPEN_TERMINAL_ON_START \
+    --vscode-option agent-host-bridge-host=127.0.0.1 \
     $STARTING_FOLDER
